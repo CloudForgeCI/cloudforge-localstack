@@ -1,0 +1,1 @@
+{"stackName":"Jenkins-Stack","applicationId":"jenkins","applicationName":"Jenkins","environment":"development","runtime":"FARGATE","authMode":"none"}

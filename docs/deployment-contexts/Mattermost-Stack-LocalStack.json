@@ -1,0 +1,21 @@
+{
+  "stackName": "Mattermost-Stack",
+  "applicationId": "mattermost-enterprise",
+  "applicationName": "Mattermost Enterprise",
+  "description": "LocalStack Mattermost — Fargate with PostgreSQL RDS",
+  "environment": "development",
+  "runtime": "FARGATE",
+  "securityProfile": "DEV",
+  "topology": "APPLICATION_SERVICE",
+  "networkMode": "public-no-nat",
+  "region": "us-east-1",
+  "authMode": "none",
+  "provisionDatabase": true,
+  "cpu": 1024,
+  "memory": 2048,
+  "minInstanceCapacity": 1,
+  "maxInstanceCapacity": 1,
+  "wafEnabled": false,
+  "enableMonitoring": true,
+  "logRetentionDays": 7
+}

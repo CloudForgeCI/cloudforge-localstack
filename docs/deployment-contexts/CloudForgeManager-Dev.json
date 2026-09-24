@@ -1,0 +1,1 @@
+{"stackName":"CloudForgeManager-Dev","applicationId":"cloudforge-manager","applicationName":"CloudForge Manager","environment":"development","runtime":"FARGATE","authMode":"none","managerDirectDeployEnabled":true,"provisionDatabase":true}
