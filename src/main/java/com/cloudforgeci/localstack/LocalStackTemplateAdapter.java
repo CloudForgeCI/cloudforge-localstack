@@ -154,6 +154,7 @@ public final class LocalStackTemplateAdapter implements TemplateAdapter {
         removeUnsupportedLogRetentionCustomResources(local, adaptations);
         removeUnsupportedS3AutoDeleteObjectsCustomResources(local, adaptations);
         removeUnsupportedCustomAwsResources(local, adaptations);
+        addLocalStackEndpointToLambdaFunctions(local, adaptations);
         removeRoute53QueryLogging(local, adaptations);
         String edgeHostname = removeRoute53RecordSets(local, adaptations);
         LocalStackCognitoSecretReconciler.removeCdkCognitoCustomResources(local, adaptations);
@@ -967,6 +968,47 @@ public final class LocalStackTemplateAdapter implements TemplateAdapter {
         }
         remove.forEach(resources::remove);
         cleanupDependsOnReferences(resources, remove);
+    }
+
+    /**
+     * Lambda-backed custom resources that survive {@link #removeUnsupportedCustomAwsResources}
+     * (raw {@code AWS::CloudFormation::CustomResource}, e.g. cfc-core's own
+     * {@code AssetFreeCustomResource}) make their own AWS SDK calls from inside the handler. On
+     * real AWS that needs no endpoint override; on LocalStack, default SDK endpoint resolution
+     * reaches LocalStack's own container on port 443 (its edge port is 4566), so the call fails
+     * with {@code ECONNREFUSED} -- and since the handler's own CloudFormation response delivery
+     * is itself an AWS-endpoint HTTPS call, it can't even deliver a {@code FAILED} response,
+     * leaving CloudFormation waiting until {@code ServiceTimeout} instead of failing fast. Point
+     * every Lambda function's own SDK calls at LocalStack via the same endpoint ECS tasks already
+     * use ({@link #resolveContainerLocalStackEndpoint()}).
+     */
+    private static void addLocalStackEndpointToLambdaFunctions(
+            ObjectNode template,
+            List<TemplateAdaptation> adaptations) {
+        ObjectNode resources = asObject(template.get("Resources"));
+        if (resources == null) {
+            return;
+        }
+        String endpoint = resolveContainerLocalStackEndpoint();
+        resources.properties().forEach(entry -> {
+            ObjectNode resource = asObject(entry.getValue());
+            if (resource == null || !"AWS::Lambda::Function".equals(resource.path("Type").asText())) {
+                return;
+            }
+            ObjectNode properties = asObject(resource.get("Properties"));
+            if (properties == null) {
+                return;
+            }
+            ObjectNode environment = properties.get("Environment") instanceof ObjectNode existing
+                ? existing : properties.putObject("Environment");
+            ObjectNode variables = environment.get("Variables") instanceof ObjectNode existingVars
+                ? existingVars : environment.putObject("Variables");
+            variables.put("AWS_ENDPOINT_URL", endpoint);
+            adaptations.add(new TemplateAdaptation(
+                "Resources." + entry.getKey() + ".Properties.Environment.Variables.AWS_ENDPOINT_URL",
+                "Point this function's own AWS SDK calls at LocalStack (" + endpoint + ")",
+                com.fasterxml.jackson.databind.node.NullNode.instance));
+        });
     }
 
     /**

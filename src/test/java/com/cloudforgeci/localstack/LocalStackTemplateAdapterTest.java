@@ -699,6 +699,42 @@ class LocalStackTemplateAdapterTest {
     }
 
     @Test
+    void pointsAssetFreeCustomResourceLambdasAtTheLocalStackEndpoint() {
+        ObjectNode canonical = MAPPER.createObjectNode();
+        ObjectNode resources = canonical.putObject("Resources");
+        // AWS::CloudFormation::CustomResource (AssetFreeCustomResource's shape), not
+        // Custom::AWS -- removeUnsupportedCustomAwsResources doesn't touch this one.
+        resources.putObject("AlbLogsBucketSSMWriterFn")
+            .put("Type", "AWS::Lambda::Function")
+            .putObject("Properties");
+        resources.putObject("AlbLogsBucketSSMWriter")
+            .put("Type", "AWS::CloudFormation::CustomResource")
+            .putObject("Properties").putObject("ServiceToken")
+                .put("Fn::GetAtt", "AlbLogsBucketSSMWriterFn");
+
+        ObjectNode adapted = (ObjectNode) adaptBase(canonical, "Jtest3").template().path("Resources");
+        JsonNode variables = adapted.path("AlbLogsBucketSSMWriterFn").path("Properties")
+            .path("Environment").path("Variables");
+        assertEquals("http://host.docker.internal:4566", variables.path("AWS_ENDPOINT_URL").asText());
+    }
+
+    @Test
+    void preservesExistingLambdaEnvironmentVariablesWhenAddingTheLocalStackEndpoint() {
+        ObjectNode canonical = MAPPER.createObjectNode();
+        ObjectNode resources = canonical.putObject("Resources");
+        ObjectNode fn = resources.putObject("SomeFn");
+        fn.put("Type", "AWS::Lambda::Function");
+        fn.putObject("Properties").putObject("Environment").putObject("Variables")
+            .put("EXISTING_VAR", "keep-me");
+
+        ObjectNode adapted = (ObjectNode) adaptBase(canonical, "Jtest4").template().path("Resources");
+        JsonNode variables = adapted.path("SomeFn").path("Properties")
+            .path("Environment").path("Variables");
+        assertEquals("keep-me", variables.path("EXISTING_VAR").asText());
+        assertEquals("http://host.docker.internal:4566", variables.path("AWS_ENDPOINT_URL").asText());
+    }
+
+    @Test
     void rewritesApplicationOidcJenkinsForBrowserAndContainerGateways() {
         ObjectNode canonical = MAPPER.createObjectNode();
         ObjectNode resources = canonical.putObject("Resources");
