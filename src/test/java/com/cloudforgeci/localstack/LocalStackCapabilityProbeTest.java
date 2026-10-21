@@ -38,4 +38,19 @@ class LocalStackCapabilityProbeTest {
         assertTrue(caps.contains(LocalStackServiceCapability.EFS));
         assertTrue(caps.contains(LocalStackServiceCapability.BACKUP));
     }
+
+    /** LocalStack's own {@code /_localstack/health} reports ELBv2/ALB support under the key
+     *  {@code elasticloadbalancing} (its real AWS service name), not {@code elbv2} — mapping only
+     *  the latter meant every deploy needing an ALB was blocked as "missing capability" even
+     *  though LocalStack reported it as available. */
+    @Test
+    void mapsElasticLoadBalancingHealthKeyToElbv2Capability() {
+        ObjectNode root = new ObjectMapper().createObjectNode();
+        ObjectNode services = root.putObject("services");
+        services.put("ecs", "available");
+        services.put("elasticloadbalancing", "available");
+
+        var caps = LocalStackCapabilityProbe.capabilitiesFromHealth(root, new LinkedHashMap<>());
+        assertTrue(caps.contains(LocalStackServiceCapability.ELBV2));
+    }
 }
