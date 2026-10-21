@@ -126,7 +126,7 @@ public final class LocalStackCapabilityProbe {
         }
         return switch (service.toLowerCase(Locale.ROOT)) {
             case "ecs" -> java.util.Optional.of(LocalStackServiceCapability.ECS);
-            case "elbv2", "elb", "elasticloadbalancingv2" ->
+            case "elbv2", "elb", "elasticloadbalancingv2", "elasticloadbalancing" ->
                 java.util.Optional.of(LocalStackServiceCapability.ELBV2);
             case "ec2" -> java.util.Optional.of(LocalStackServiceCapability.EC2);
             case "autoscaling", "application-autoscaling" ->
